@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>한국 주식 가격 TOP 50 대시보드</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2330;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --accent2: #3fb950;
+            --red: #f85149;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --gold: #e3b341;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Noto Sans KR', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .header-left p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-input-group label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        input[type="date"] {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        input[type="date"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button#loadBtn {
+            background: linear-gradient(135deg, var(--accent), #388bfd);
+            border: none;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        button#loadBtn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(88, 166, 255, 0.35);
+        }
+
+        button#loadBtn:active {
+            transform: translateY(0);
+        }
+
+        button#loadBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Stats bar ── */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 16px 32px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            min-width: 140px;
+            transition: border-color 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 4px;
+            color: var(--text);
+        }
+
+        /* ── Main ── */
+        main {
+            padding: 24px 32px;
+        }
+
+        /* ── Status / Spinner ── */
+        #status {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Table ── */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead tr {
+            background: var(--surface2);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        th.right,
+        td.right {
+            text-align: right;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        td {
+            padding: 13px 16px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        /* Rank badge */
+        .rank {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .rank-1 {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .rank-2 {
+            background: #d0d0d0;
+            color: #000;
+        }
+
+        .rank-3 {
+            background: #cd7f32;
+            color: #fff;
+        }
+
+        .rank-n {
+            background: var(--surface2);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        /* Market badge */
+        .market-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .m-KOSPI {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+
+        .m-KOSDAQ {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent2);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+
+        .m-KONEX {
+            background: rgba(227, 179, 65, 0.15);
+            color: var(--gold);
+            border: 1px solid rgba(227, 179, 65, 0.3);
+        }
+
+        /* Price */
+        .price {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* Change */
+        .up {
+            color: var(--red);
+        }
+
+        .down {
+            color: var(--accent);
+        }
+
+        .flat {
+            color: var(--text-muted);
+        }
+
+        .change-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+        }
+
+        .change-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .badge-up {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--red);
+        }
+
+        .badge-down {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .badge-flat {
+            background: var(--surface2);
+            color: var(--text-muted);
+        }
+
+        /* Volume / Amount */
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        /* Error */
+        .error-box {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            border-radius: 8px;
+            padding: 20px 24px;
+            color: var(--red);
+            text-align: center;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            main,
+            .stats-bar {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <h1>🇰🇷 한국 주식 가격 TOP 50</h1>
+            <p>공공데이터포털 · 금융위원회 주식시세정보</p>
+        </div>
+        <div class="header-right">
+            <div class="date-input-group">
+                <label for="datePicker">기준일자</label>
+                <input type="date" id="datePicker" />
+            </div>
+            <button id="loadBtn" onclick="loadData()">📊 조회</button>
+        </div>
+    </header>
+
+    <div class="stats-bar" id="statsBar" style="display:none;">
+        <div class="stat-card">
+            <div class="stat-label">기준일자</div>
+            <div class="stat-value" id="stat-date">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">최고 종가</div>
+            <div class="stat-value" id="stat-max">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">평균 종가 (TOP 50)</div>
+            <div class="stat-value" id="stat-avg">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">상승 종목</div>
+            <div class="stat-value up" id="stat-up">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">하락 종목</div>
+            <div class="stat-value down" id="stat-dn">—</div>
+        </div>
+    </div>
+
+    <main>
+        <div id="status">
+            <p style="font-size:1rem;">날짜를 선택하고 <strong style="color:var(--accent)">조회</strong> 버튼을 눌러주세요.</p>
+            <p style="font-size:0.8rem;margin-top:8px;color:var(--text-muted)">주식시장이 열린 평일 날짜를 선택하세요 (주말·공휴일 데이터 없음)</p>
+        </div>
+        <div id="tableContainer" style="display:none;">
+            <div class="table-wrap">
+                <table id="stockTable">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">순위</th>
+                            <th>종목명</th>
+                            <th>코드</th>
+                            <th>시장</th>
+                            <th class="right">종가 (원)</th>
+                            <th class="right">전일대비</th>
+                            <th class="right">등락률</th>
+                            <th class="right">시가</th>
+                            <th class="right">고가</th>
+                            <th class="right">저가</th>
+                            <th class="right">거래량</th>
+                            <th class="right">시가총액</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_KEY = '10a7704c1fa6e3115cb4546cd355c6efa33794752b1b171c1ca72ab48eb39983';
+        const BASE_URL = 'https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo';
+
+        // 오늘로부터 가장 최근 평일 (기본값)
+        (function setDefaultDate() {
+            const d = new Date();
+            // 주말이면 금요일로
+            const day = d.getDay();
+            if (day === 0) d.setDate(d.getDate() - 2);
+            else if (day === 6) d.setDate(d.getDate() - 1);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            document.getElementById('datePicker').value = `${yyyy}-${mm}-${dd}`;
+        })();
+
+        function toApiDate(inputVal) {
+            return inputVal.replace(/-/g, '');
+        }
+
+        function fmt(num) {
+            if (num == null || num === '') return '—';
+            return Number(num).toLocaleString('ko-KR');
+        }
+
+        function fmtAmt(num) {
+            if (num == null || num === '') return '—';
+            const n = Number(num);
+            if (n >= 1e12) return (n / 1e12).toFixed(2) + '조';
+            if (n >= 1e8) return (n / 1e8).toFixed(1) + '억';
+            return n.toLocaleString('ko-KR');
+        }
+
+        async function fetchPage(basDt, pageNo, numOfRows) {
+            const url = `${BASE_URL}?serviceKey=${API_KEY}&numOfRows=${numOfRows}&pageNo=${pageNo}&resultType=json&basDt=${basDt}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return data;
+        }
+
+        async function loadData() {
+            const dateVal = document.getElementById('datePicker').value;
+            if (!dateVal) { alert('날짜를 선택해주세요.'); return; }
+
+            const basDt = toApiDate(dateVal);
+            const btn = document.getElementById('loadBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 로딩 중...';
+
+            document.getElementById('statsBar').style.display = 'none';
+            document.getElementById('tableContainer').style.display = 'none';
+            document.getElementById('status').innerHTML = `
+      <div class="spinner"></div>
+      <p>데이터를 불러오는 중입니다...</p>
+      <p style="font-size:0.8rem;margin-top:6px;color:var(--text-muted)">최대 1,000개 종목을 조회하여 가격순으로 정렬합니다.</p>
+    `;
+            document.getElementById('status').style.display = 'block';
+
+            try {
+                // 1페이지 먼저 조회해서 totalCount 파악
+                const firstResp = await fetchPage(basDt, 1, 100);
+                const header = firstResp?.response?.header;
+                if (!header || header.resultCode !== '00') {
+                    throw new Error(`API 오류: ${header?.resultMsg || '알 수 없는 오류'}`);
+                }
+
+                const body = firstResp.response.body;
+                const totalCount = parseInt(body.totalCount || '0');
+
+                if (totalCount === 0) {
+                    throw new Error('해당 날짜의 데이터가 없습니다. 주식시장이 열린 평일을 선택해주세요.');
+                }
+
+                // 최대 1000개 범위 내에서 페이지 수 계산
+                const maxItems = Math.min(totalCount, 1000);
+                const pageSize = 100;
+                const totalPages = Math.ceil(maxItems / pageSize);
+
+                let allItems = [];
+
+                // 첫 페이지 아이템 수집
+                const firstItems = body.items?.item;
+                if (firstItems) {
+                    allItems = allItems.concat(Array.isArray(firstItems) ? firstItems : [firstItems]);
+                }
+
+                // 나머지 페이지 병렬 요청
+                if (totalPages > 1) {
+                    const promises = [];
+                    for (let p = 2; p <= totalPages; p++) {
+                        promises.push(fetchPage(basDt, p, pageSize));
+                    }
+                    const results = await Promise.all(promises);
+                    for (const r of results) {
+                        const items = r?.response?.body?.items?.item;
+                        if (items) {
+                            allItems = allItems.concat(Array.isArray(items) ? items : [items]);
+                        }
+                    }
+                }
+
+                // 종가 기준 내림차순 정렬 후 TOP 50
+                allItems.sort((a, b) => Number(b.clpr) - Number(a.clpr));
+                const top50 = allItems.slice(0, 50);
+
+                renderTable(top50, basDt);
+
+            } catch (err) {
+                document.getElementById('status').innerHTML = `
+        <div class="error-box">
+          <strong>⚠️ 오류 발생</strong><br/>
+          <span style="font-size:0.9rem;margin-top:8px;display:block;">${err.message}</span>
+        </div>
+      `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📊 조회';
+            }
+        }
+
+        function renderTable(items, basDt) {
+            // Stats
+            const prices = items.map(i => Number(i.clpr));
+            const maxPrice = Math.max(...prices);
+            const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+            const upCount = items.filter(i => Number(i.vs) > 0).length;
+            const dnCount = items.filter(i => Number(i.vs) < 0).length;
+
+            document.getElementById('stat-date').textContent =
+                `${basDt.slice(0, 4)}.${basDt.slice(4, 6)}.${basDt.slice(6, 8)}`;
+            document.getElementById('stat-max').textContent = fmt(maxPrice) + '원';
+            document.getElementById('stat-avg').textContent = fmt(avgPrice) + '원';
+            document.getElementById('stat-up').textContent = `▲ ${upCount}`;
+            document.getElementById('stat-dn').textContent = `▼ ${dnCount}`;
+            document.getElementById('statsBar').style.display = 'flex';
+
+            // Table
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            items.forEach((item, idx) => {
+                const rank = idx + 1;
+                const vs = Number(item.vs);
+                const fltRt = parseFloat(item.fltRt);
+                const isUp = vs > 0;
+                const isDn = vs < 0;
+
+                let rankHtml;
+                if (rank === 1) rankHtml = `<span class="rank rank-1">1</span>`;
+                else if (rank === 2) rankHtml = `<span class="rank rank-2">2</span>`;
+                else if (rank === 3) rankHtml = `<span class="rank rank-3">3</span>`;
+                else rankHtml = `<span class="rank rank-n">${rank}</span>`;
+
+                const mkt = item.mrktCtg || '';
+                const mktCls = mkt.startsWith('KOSPI') ? 'm-KOSPI' : mkt === 'KOSDAQ' ? 'm-KOSDAQ' : 'm-KONEX';
+
+                const changeSign = vs > 0 ? '+' : '';
+                const changeCls = isUp ? 'up' : isDn ? 'down' : 'flat';
+                const badgeCls = isUp ? 'badge-up' : isDn ? 'badge-down' : 'badge-flat';
+                const arrow = isUp ? '▲' : isDn ? '▼' : '—';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td>${rankHtml}</td>
+        <td><strong>${item.itmsNm || '—'}</strong></td>
+        <td><span class="mono">${item.srtnCd || '—'}</span></td>
+        <td><span class="market-badge ${mktCls}">${mkt}</span></td>
+        <td class="right"><span class="price">${fmt(item.clpr)}</span></td>
+        <td class="right">
+          <span class="change-val ${changeCls}">${changeSign}${fmt(item.vs)}</span>
+        </td>
+        <td class="right">
+          <span class="change-badge ${badgeCls}">${arrow} ${changeSign}${fltRt}%</span>
+        </td>
+        <td class="right"><span class="mono">${fmt(item.mkp)}</span></td>
+        <td class="right"><span class="mono">${fmt(item.hipr)}</span></td>
+        <td class="right"><span class="mono">${fmt(item.lopr)}</span></td>
+        <td class="right"><span class="mono">${fmt(item.trqu)}</span></td>
+        <td class="right"><span class="mono">${fmtAmt(item.mrktTotAmt)}</span></td>
+      `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('tableContainer').style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>
